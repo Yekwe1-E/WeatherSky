@@ -110,7 +110,10 @@ const fetchWeather = async (url, res) => {
         res.json(response.data);
     } catch (error) {
         if (error.response) {
-            res.status(error.response.status).json({ error: error.response.data.message });
+            const errorMsg = (error.response.data && (error.response.data.message || error.response.data.error)) 
+                ? (error.response.data.message || error.response.data.error)
+                : 'City or location not found';
+            res.status(error.response.status).json({ error: errorMsg });
         } else {
             res.status(500).json({ error: 'Error fetching weather data' });
         }

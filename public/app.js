@@ -108,14 +108,28 @@ async function fetchWeatherData(params) {
         // Fetch Current
         const currentRes = await fetch(`/api/weather/current?${query}`);
         if (!currentRes.ok) {
-            const errBase = await currentRes.json();
-            throw new Error(errBase.error || 'Failed to fetch weather data');
+            let errorMsg = 'City or location not found';
+            try {
+                const errBase = await currentRes.json();
+                errorMsg = errBase.error || errBase.message || errorMsg;
+            } catch (e) {
+                const rawText = await currentRes.text();
+                if (rawText && rawText.length < 100) errorMsg = rawText;
+            }
+            throw new Error(errorMsg);
         }
         const currentData = await currentRes.json();
 
         // Fetch Forecast
         const forecastRes = await fetch(`/api/weather/forecast?${query}`);
-        const forecastData = forecastRes.ok ? await forecastRes.json() : null;
+        let forecastData = null;
+        if (forecastRes.ok) {
+            try {
+                forecastData = await forecastRes.json();
+            } catch (e) {
+                console.error('Failed to parse forecast JSON:', e);
+            }
+        }
 
         updateCurrentWeatherUI(currentData);
         if (forecastData) updateForecastUI(forecastData);
