@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeatherSky - Premium Forecast</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="light-mode clear-day">
+    <!-- Dynamic Weather Scenery Live Canvas -->
+    <canvas id="weatherCanvasOverlay"></canvas>
+
+    <!-- Navbar -->
+    <nav class="navbar glass">
+        <div class="logo">
+            <i class="fa-solid fa-cloud-sun"></i> WeatherSky
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search City or Country (e.g., London, UK)...">
+            <button id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <button id="geoBtn" title="Use my location"><i class="fa-solid fa-location-crosshairs"></i></button>
+        </div>
+        <div class="nav-links">
+            <button id="themeToggleBtn" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+            <div id="authSection">
+                <button id="loginBtn" class="btn btn-outline">Login</button>
+                <button id="registerBtn" class="btn btn-primary">Sign Up</button>
+            </div>
+            <div id="userSection" class="hidden">
+                <span id="userNameDisplay">User</span>
+                <button id="dashboardBtn" class="btn btn-outline">Dashboard</button>
+                <button id="logoutBtn" class="btn btn-danger">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" class="hidden">
+            <div class="spinner"></div>
+            <p>Fetching weather data...</p>
+        </div>
+
+        <!-- Error Notification -->
+        <div id="notification" class="notification hidden">
+            <span id="notificationMsg"></span>
+            <button id="closeNotification"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="layout-grid">
+            <!-- Current Weather Widget (Glassmorphism) -->
+            <section class="current-weather glass-card" id="currentWeatherSection">
+                <div class="weather-header">
+                    <h1 id="cityName">London, GB</h1>
+                    <button id="saveFavBtn" class="icon-btn hidden" title="Save to Favorites"><i class="fa-regular fa-heart"></i></button>
+                </div>
+                <p id="currentDate">Monday, 15 April</p>
+                
+                <div class="weather-main-info">
+                    <img id="weatherIconBig" src="" alt="Weather Icon" class="big-icon placeholder-pulse">
+                    <div class="temperature">
+                        <span id="tempValue">--</span><span class="unit">°C</span>
+                    </div>
+                </div>
+                
+                <p id="weatherCondition" class="condition">--</p>
+                
+                <div class="weather-details grid-2">
+                    <div class="detail-item">
+                        <i class="fa-solid fa-droplet"></i>
+                        <div>
+                            <p class="label">Humidity</p>
+                            <p class="value" id="humidityVal">--%</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fa-solid fa-wind"></i>
+                        <div>
+                            <p class="label">Wind Speed</p>
+                            <p class="value" id="windVal">-- m/s</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fa-solid fa-temperature-arrow-up"></i>
+                        <div>
+                            <p class="label">Max Temp</p>
+                            <p class="value" id="tempMaxVal">--°C</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fa-solid fa-temperature-arrow-down"></i>
+                        <div>
+                            <p class="label">Min Temp</p>
+                            <p class="value" id="tempMinVal">--°C</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fa-solid fa-gauge-high"></i>
+                        <div>
+                            <p class="label">Pressure</p>
+                            <p class="value" id="pressureVal">-- hPa</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fa-solid fa-eye"></i>
+                        <div>
+                            <p class="label">Visibility</p>
+                            <p class="value" id="visibilityVal">-- km</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Forecast & Charts -->
+            <div class="right-column">
+                
+                <!-- Hourly Forecast Timeline -->
+                <section class="hourly-forecast glass-card">
+                    <div class="section-header">
+                        <h2>Hourly Reading (24-Hour Breakdown)</h2>
+                        <span class="badge"><i class="fa-solid fa-clock"></i> Live Updates</span>
+                    </div>
+                    <div class="hourly-container" id="hourlyForecastContainer">
+                        <!-- Dynamically populated hourly cards -->
+                        <div class="placeholder-pulse" style="height: 110px; border-radius: 12px;"></div>
+                    </div>
+                </section>
+
+                <!-- 5 Day Forecast (Hourly/Daily breakdown) -->
+                <section class="forecast glass-card">
+                    <h2>5-Day Daily Overview</h2>
+                    <div class="forecast-container" id="forecastContainer">
+                        <!-- Dynamically populated cards -->
+                        <div class="placeholder-pulse" style="height: 100px; border-radius: 10px;"></div>
+                    </div>
+                </section>
+
+                <!-- Chart container -->
+                <section class="chart-section glass-card">
+                    <h2>Temperature Trend</h2>
+                    <div class="chart-container">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </section>
+                
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-backdrop hidden" id="authModal">
+        <div class="modal glass-card">
+            <button class="close-modal" id="closeModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="modal-tabs">
+                <button class="tab active" id="tabLogin">Login</button>
+                <button class="tab" id="tabRegister">Register</button>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <input type="email" id="loginEmail" placeholder="Email Address" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary full-width">Login</button>
+            </form>
+
+            <form id="registerForm" class="auth-form hidden">
+                <input type="text" id="regUsername" placeholder="Username" required>
+                <input type="email" id="regEmail" placeholder="Email Address" required>
+                <input type="password" id="regPassword" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary full-width">Sign Up</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- User Dashboard Modal -->
+    <div class="modal-backdrop hidden" id="dashboardModal">
+        <div class="modal dashboard-modal glass-card">
+            <button class="close-modal" id="closeDashBtn"><i class="fa-solid fa-xmark"></i></button>
+            <h2>My Dashboard</h2>
+            <div class="favorites-section">
+                <h3>Favorite Locations</h3>
+                <ul id="favoritesList" class="favorites-list">
+                    <!-- Populated dynamically -->
+                </ul>
+                <p id="noFavsMsg" class="hidden">No favorite locations saved yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
