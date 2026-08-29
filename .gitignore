@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.sqlite
+weather_app.sqlite
+.npm
+npm-debug.log
+.DS_Store
+
