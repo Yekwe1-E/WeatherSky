@@ -39,7 +39,7 @@ async function handleSupabaseQuery(sql, params) {
         const { data, error } = await supabase
             .from('users')
             .select('id, username, email')
-            .eq('id', id);
+            .eq('id', Number(id));
         if (error) throw error;
         return [data || []];
     }
@@ -48,7 +48,7 @@ async function handleSupabaseQuery(sql, params) {
         const { data, error } = await supabase
             .from('favorites')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', Number(userId))
             .order('created_at', { ascending: false });
         if (error) throw error;
         return [data || []];
@@ -58,7 +58,7 @@ async function handleSupabaseQuery(sql, params) {
         const { data, error } = await supabase
             .from('favorites')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', Number(userId))
             .eq('city', city)
             .eq('country', country);
         if (error) throw error;
@@ -68,7 +68,7 @@ async function handleSupabaseQuery(sql, params) {
         const [userId, city, country] = params;
         const { data, error } = await supabase
             .from('favorites')
-            .insert([{ user_id: userId, city, country }])
+            .insert([{ user_id: Number(userId), city, country }])
             .select();
         if (error) throw error;
         return [{ insertId: data && data[0] ? data[0].id : Date.now(), affectedRows: 1 }];
@@ -78,8 +78,8 @@ async function handleSupabaseQuery(sql, params) {
         const { error } = await supabase
             .from('favorites')
             .delete()
-            .eq('id', id)
-            .eq('user_id', userId);
+            .eq('id', Number(id))
+            .eq('user_id', Number(userId));
         if (error) throw error;
         return [{ affectedRows: 1 }];
     }

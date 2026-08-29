@@ -76,8 +76,8 @@ function setupEventListeners() {
     // Notifications
     document.getElementById('closeNotification').addEventListener('click', () => notification.classList.add('hidden'));
 
-    // Save Favorite
-    saveFavBtn.addEventListener('click', saveFavorite);
+    // Favorite Toggle
+    saveFavBtn.addEventListener('click', toggleFavorite);
 }
 
 // ----------------------------------------
@@ -552,27 +552,74 @@ async function handleLogout() {
 // FAVORITES LOGIC
 // ----------------------------------------
 
-async function saveFavorite() {
-    const city = saveFavBtn.dataset.city;
-    const country = saveFavBtn.dataset.country;
-    if (!city || !currentUser) return;
+// ----------------------------------------
+// FAVORITES LOGIC
+// ----------------------------------------
 
+async function checkIfCurrentCityIsFavorite(city, country) {
+    if (!currentUser || !city) return;
     try {
-        const res = await fetch('/api/favorites', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ city, country })
-        });
-        const data = await res.json();
-        
-        if (res.ok) {
-            showNotification(`${city} saved to favorites!`);
-            saveFavBtn.innerHTML = '<i class="fa-solid fa-heart"></i>'; // Solid heart
+        const res = await fetch('/api/favorites');
+        if (!res.ok) return;
+        const favorites = await res.json();
+        if (!Array.isArray(favorites)) return;
+
+        const match = favorites.find(f => f.city.toLowerCase() === city.toLowerCase());
+        if (match) {
+            saveFavBtn.dataset.favId = match.id;
+            saveFavBtn.classList.add('active');
+            saveFavBtn.innerHTML = '<i class="fa-solid fa-heart"></i> <span id="favBtnText">Saved in Favorites</span>';
         } else {
-            showNotification(data.error);
+            saveFavBtn.dataset.favId = '';
+            saveFavBtn.classList.remove('active');
+            saveFavBtn.innerHTML = '<i class="fa-regular fa-heart"></i> <span id="favBtnText">Add to Favorites</span>';
         }
     } catch (e) {
-        showNotification('Error saving favorite');
+        console.error('Error checking favorite state:', e);
+    }
+}
+
+async function toggleFavorite() {
+    const city = saveFavBtn.dataset.city;
+    const country = saveFavBtn.dataset.country;
+    const favId = saveFavBtn.dataset.favId;
+
+    if (!currentUser) {
+        showNotification('Please log in to save favorites');
+        showAuthModal('login');
+        return;
+    }
+
+    if (!city) return;
+
+    try {
+        if (favId) {
+            const res = await fetch(`/api/favorites/${favId}`, { method: 'DELETE' });
+            if (res.ok) {
+                saveFavBtn.dataset.favId = '';
+                saveFavBtn.classList.remove('active');
+                saveFavBtn.innerHTML = '<i class="fa-regular fa-heart"></i> <span id="favBtnText">Add to Favorites</span>';
+                showNotification(`${city} removed from favorites`);
+            } else {
+                const data = await res.json();
+                showNotification(data.error || 'Error removing favorite');
+            }
+        } else {
+            const res = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ city, country })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showNotification(`${city} saved to favorites!`);
+                checkIfCurrentCityIsFavorite(city, country);
+            } else {
+                showNotification(data.error || 'Error saving favorite');
+            }
+        }
+    } catch (e) {
+        showNotification('Error updating favorite status');
     }
 }
 
@@ -584,29 +631,40 @@ async function openDashboard() {
     favList.innerHTML = '<div class="spinner"></div>';
     noFavs.classList.add('hidden');
 
+    if (!currentUser) {
+        favList.innerHTML = '';
+        showNotification('Please log in to view your dashboard');
+        showAuthModal('login');
+        return;
+    }
+
     try {
         const res = await fetch('/api/favorites');
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({ error: 'Unauthorized or error loading favorites' }));
+            throw new Error(errData.error || 'Failed to load favorites');
+        }
         const data = await res.json();
         
         favList.innerHTML = '';
-        if (data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
             noFavs.classList.remove('hidden');
         } else {
             data.forEach(fav => {
                 const li = document.createElement('li');
                 li.className = 'favorite-item';
                 li.innerHTML = `
-                    <span style="cursor:pointer" onclick="fetchWeatherData({city: '${fav.city}'}); document.getElementById('dashboardModal').classList.add('hidden');">
-                        <strong>${fav.city}</strong>, ${fav.country}
-                    </span>
-                    <button onclick="removeFavorite(${fav.id}, this)"><i class="fa-solid fa-trash"></i></button>
+                    <div style="cursor:pointer; flex:1;" onclick="fetchWeatherData({city: '${fav.city}'}); document.getElementById('dashboardModal').classList.add('hidden');">
+                        <strong><i class="fa-solid fa-location-dot" style="color:#ef4444; margin-right:0.4rem;"></i>${fav.city}</strong>, ${fav.country}
+                    </div>
+                    <button class="btn btn-danger" onclick="removeFavorite(${fav.id}, this)" title="Remove location"><i class="fa-solid fa-trash"></i></button>
                 `;
                 favList.appendChild(li);
             });
         }
     } catch (e) {
         favList.innerHTML = '';
-        showNotification('Error loading favorites');
+        showNotification(e.message || 'Error loading favorites');
     }
 }
 
@@ -614,8 +672,14 @@ async function removeFavorite(id, btnRef) {
     try {
         const res = await fetch(`/api/favorites/${id}`, { method: 'DELETE' });
         if (res.ok) {
-            btnRef.parentElement.remove();
-            showNotification('Favorite removed');
+            if (btnRef && btnRef.parentElement) btnRef.parentElement.remove();
+            showNotification('Favorite location removed');
+            if (saveFavBtn.dataset.city) {
+                checkIfCurrentCityIsFavorite(saveFavBtn.dataset.city, saveFavBtn.dataset.country);
+            }
+        } else {
+            const data = await res.json();
+            showNotification(data.error || 'Error removing favorite');
         }
     } catch (e) {
         showNotification('Error removing favorite');
