@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WeatherSky - Premium Forecast</title>
+    <title>WeatherSky - Premium Live Weather & Intelligent Forecast</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet JS for Interactive Weather Radar Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -19,152 +23,418 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="light-mode clear-day">
-    <!-- Dynamic Weather Scenery Live Canvas -->
+    <!-- Dynamic Weather Scenery Live Canvas Overlay -->
     <canvas id="weatherCanvasOverlay"></canvas>
 
     <!-- Navbar -->
     <nav class="navbar glass">
         <div class="logo">
-            <i class="fa-solid fa-cloud-sun"></i> WeatherSky
+            <i class="fa-solid fa-cloud-sun logo-icon"></i> WeatherSky
         </div>
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search City or Country (e.g., London, UK)...">
-            <button id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <button id="geoBtn" title="Use my location"><i class="fa-solid fa-location-crosshairs"></i></button>
+
+        <div class="search-wrapper">
+            <div class="search-container">
+                <input type="text" id="searchInput" autocomplete="off" placeholder="Search City or Country (e.g., London, Tokyo, NYC)...">
+                <button id="searchBtn" title="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <button id="geoBtn" title="Use my current location"><i class="fa-solid fa-location-crosshairs"></i></button>
+            </div>
+            <!-- Live Autocomplete Suggestions Dropdown -->
+            <ul id="autocompleteDropdown" class="autocomplete-dropdown hidden"></ul>
         </div>
-        <div class="nav-links">
-            <button id="themeToggleBtn" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
+
+        <div class="nav-actions">
+            <!-- Unit Switcher °C / °F -->
+            <button id="unitToggleBtn" class="pill-toggle-btn" title="Toggle °C / °F">
+                <span id="unitText">°C</span>
+            </button>
+
+            <!-- Web Audio Weather Soundscape Button -->
+            <button id="audioToggleBtn" class="icon-nav-btn" title="Toggle Ambient Weather Soundscape">
+                <i class="fa-solid fa-volume-xmark"></i>
+            </button>
+
+            <!-- Theme Toggle -->
+            <button id="themeToggleBtn" class="icon-nav-btn" title="Toggle Theme">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+
+            <!-- Auth Section -->
             <div id="authSection">
                 <button id="loginBtn" class="btn btn-outline">Login</button>
                 <button id="registerBtn" class="btn btn-primary">Sign Up</button>
             </div>
             <div id="userSection" class="hidden">
                 <span id="userNameDisplay">User</span>
-                <button id="dashboardBtn" class="btn btn-outline">Dashboard</button>
-                <button id="logoutBtn" class="btn btn-danger">Logout</button>
+                <button id="dashboardBtn" class="btn btn-outline" title="My Dashboard"><i class="fa-solid fa-bookmark"></i> Favorites</button>
+                <button id="compareBtn" class="btn btn-outline" title="Compare Dual Cities"><i class="fa-solid fa-code-compare"></i> Compare</button>
+                <button id="logoutBtn" class="btn btn-danger" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
+    <!-- Quick Recent Searches Chips -->
+    <div id="recentSearches" class="recent-chips-container container"></div>
+
+    <!-- Smart Weather Advisory Banner -->
+    <div id="advisoryBanner" class="advisory-banner container hidden">
+        <div class="advisory-content">
+            <i id="advisoryIcon" class="fa-solid fa-triangle-exclamation"></i>
+            <span id="advisoryMsg">Smart Advisory Notice</span>
+        </div>
+        <button id="closeAdvisory"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Main Content Grid -->
     <main class="container">
         
         <!-- Loading overlay -->
         <div id="loadingOverlay" class="hidden">
             <div class="spinner"></div>
-            <p>Fetching weather data...</p>
+            <p id="loadingMsg">Fetching live atmospheric data...</p>
         </div>
 
-        <!-- Error Notification -->
+        <!-- Notification Toast -->
         <div id="notification" class="notification hidden">
             <span id="notificationMsg"></span>
             <button id="closeNotification"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <div class="layout-grid">
-            <!-- Current Weather Widget (Glassmorphism) -->
-            <section class="current-weather glass-card" id="currentWeatherSection">
-                <div class="weather-header">
-                    <h1 id="cityName">London, GB</h1>
-                    <button id="saveFavBtn" class="btn btn-favorite hidden" title="Toggle Favorite Location">
-                        <i class="fa-regular fa-heart"></i> <span id="favBtnText">Add to Favorites</span>
-                    </button>
-                </div>
-                <p id="currentDate">Monday, 15 April</p>
+            
+            <!-- Left Column: Current Weather, Wind Compass & Solar Position Arc -->
+            <div class="left-column">
                 
-                <div class="weather-main-info">
-                    <img id="weatherIconBig" src="" alt="Weather Icon" class="big-icon placeholder-pulse">
-                    <div class="temperature">
-                        <span id="tempValue">--</span><span class="unit">°C</span>
-                    </div>
-                </div>
-                
-                <p id="weatherCondition" class="condition">--</p>
-                
-                <div class="weather-details grid-2">
-                    <div class="detail-item">
-                        <i class="fa-solid fa-droplet"></i>
+                <!-- Current Weather Card -->
+                <section class="current-weather glass-card" id="currentWeatherSection">
+                    <div class="weather-header">
                         <div>
-                            <p class="label">Humidity</p>
-                            <p class="value" id="humidityVal">--%</p>
+                            <h1 id="cityName">London, GB</h1>
+                            <p id="currentDate">Monday, 15 April</p>
+                        </div>
+                        <button id="saveFavBtn" class="btn btn-favorite hidden" title="Toggle Favorite Location">
+                            <i class="fa-regular fa-heart"></i> <span id="favBtnText">Save Location</span>
+                        </button>
+                    </div>
+                    
+                    <div class="weather-main-info">
+                        <img id="weatherIconBig" src="" alt="Weather Icon" class="big-icon placeholder-pulse">
+                        <div class="temperature">
+                            <span id="tempValue">--</span><span class="unit-symbol" id="mainUnitSymbol">°C</span>
                         </div>
                     </div>
-                    <div class="detail-item">
-                        <i class="fa-solid fa-wind"></i>
-                        <div>
-                            <p class="label">Wind Speed</p>
-                            <p class="value" id="windVal">-- m/s</p>
+                    
+                    <p id="weatherCondition" class="condition">--</p>
+                    <p id="feelsLikeText" class="feels-like">Feels like --°C</p>
+                    
+                    <div class="weather-details grid-2">
+                        <div class="detail-item">
+                            <i class="fa-solid fa-droplet"></i>
+                            <div>
+                                <p class="label">Humidity</p>
+                                <p class="value" id="humidityVal">--%</p>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fa-solid fa-wind"></i>
+                            <div>
+                                <p class="label">Wind Speed</p>
+                                <p class="value" id="windVal">-- m/s</p>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fa-solid fa-temperature-arrow-up"></i>
+                            <div>
+                                <p class="label">Max Temp</p>
+                                <p class="value" id="tempMaxVal">--°C</p>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fa-solid fa-temperature-arrow-down"></i>
+                            <div>
+                                <p class="label">Min Temp</p>
+                                <p class="value" id="tempMinVal">--°C</p>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fa-solid fa-gauge-high"></i>
+                            <div>
+                                <p class="label">Pressure</p>
+                                <p class="value" id="pressureVal">-- hPa</p>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <i class="fa-solid fa-eye"></i>
+                            <div>
+                                <p class="label">Visibility</p>
+                                <p class="value" id="visibilityVal">-- km</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="detail-item">
-                        <i class="fa-solid fa-temperature-arrow-up"></i>
-                        <div>
-                            <p class="label">Max Temp</p>
-                            <p class="value" id="tempMaxVal">--°C</p>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <i class="fa-solid fa-temperature-arrow-down"></i>
-                        <div>
-                            <p class="label">Min Temp</p>
-                            <p class="value" id="tempMinVal">--°C</p>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <i class="fa-solid fa-gauge-high"></i>
-                        <div>
-                            <p class="label">Pressure</p>
-                            <p class="value" id="pressureVal">-- hPa</p>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <i class="fa-solid fa-eye"></i>
-                        <div>
-                            <p class="label">Visibility</p>
-                            <p class="value" id="visibilityVal">-- km</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Right Column: Forecast & Charts -->
+                <!-- 🧭 3D Wind Vector Compass Card -->
+                <section class="wind-compass-card glass-card">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-compass"></i> Wind Dynamics</h2>
+                        <span id="beaufortBadge" class="badge">Breeze</span>
+                    </div>
+                    <div class="compass-container">
+                        <div class="compass-dial">
+                            <span class="cardinal n">N</span>
+                            <span class="cardinal e">E</span>
+                            <span class="cardinal s">S</span>
+                            <span class="cardinal w">W</span>
+                            <div id="compassNeedle" class="compass-needle">
+                                <i class="fa-solid fa-location-arrow"></i>
+                            </div>
+                        </div>
+                        <div class="wind-info">
+                            <p class="wind-deg-val"><span id="windDegVal">0</span>° <span id="windDirText">N</span></p>
+                            <p class="wind-desc" id="beaufortDesc">Light breeze moving smoothly</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ☀️ Solar Trajectory & Atmospheric Arc Card -->
+                <section class="solar-arc-card glass-card">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-sun"></i> Solar Trajectory</h2>
+                        <span id="uvIndexBadge" class="badge badge-uv">UV: --</span>
+                    </div>
+                    <div class="solar-canvas-container">
+                        <svg id="solarSvg" viewBox="0 0 300 120" class="solar-svg">
+                            <!-- Background Arc -->
+                            <path d="M 30 100 A 120 80 0 0 1 270 100" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-dasharray="5 5" />
+                            <!-- Active Sun Path -->
+                            <path id="solarProgressPath" d="M 30 100 A 120 80 0 0 1 150 20" fill="none" stroke="#f59e0b" stroke-width="4" />
+                            <!-- Sun Dot Indicator -->
+                            <circle id="solarSunDot" cx="150" cy="20" r="9" fill="#fbbf24" filter="drop-shadow(0 0 8px #f59e0b)" />
+                            <!-- Ground Line -->
+                            <line x1="10" y1="100" x2="290" y2="100" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
+                        </svg>
+                        <div class="solar-times">
+                            <div>
+                                <i class="fa-solid fa-sun-plant-wilt" style="color: #f59e0b;"></i>
+                                <span class="label">Sunrise</span>
+                                <span id="sunriseTimeVal" class="time-val">06:00 AM</span>
+                            </div>
+                            <div>
+                                <i class="fa-solid fa-moon" style="color: #6366f1;"></i>
+                                <span class="label">Sunset</span>
+                                <span id="sunsetTimeVal" class="time-val">07:30 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- Right Column: Interactive Time Slider, Outfit & Activity, AQI, Forecast, Multi-Metric Chart, Radar Map -->
             <div class="right-column">
                 
-                <!-- Hourly Forecast Timeline -->
+                <!-- 🎛️ 24-Hour Time-Travel Scrubber Slider -->
+                <section class="time-slider-card glass-card">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-sliders"></i> 24-Hour Interactive Weather Scrubber</h2>
+                        <span id="selectedTimeBadge" class="badge badge-accent">Current Hour</span>
+                    </div>
+                    <p class="section-desc">Drag the scrubber to preview atmospheric shifts across the next 24 hours live.</p>
+                    <div class="slider-wrapper">
+                        <input type="range" id="timeScrubber" min="0" max="7" value="0" step="1">
+                        <div class="slider-ticks" id="sliderTicks">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 👕 Smart Outfit & Outdoor Activity Recommendation Engine -->
+                <section class="outfit-activity-card glass-card">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-shirt"></i> Smart Outfit & Activity Recommendations</h2>
+                    </div>
+                    
+                    <div class="outfit-banner">
+                        <i class="fa-solid fa-user-tie outfit-icon"></i>
+                        <div>
+                            <p class="outfit-title">Recommended Attire</p>
+                            <p id="outfitRecommendation" class="outfit-text">Loading personalized recommendation...</p>
+                        </div>
+                    </div>
+
+                    <div class="activity-grid">
+                        <div class="activity-item">
+                            <div class="activity-header">
+                                <span><i class="fa-solid fa-person-running"></i> Running</span>
+                                <span id="scoreRunning" class="score-badge">--/10</span>
+                            </div>
+                            <div class="progress-bar"><div id="barRunning" class="progress-fill"></div></div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-header">
+                                <span><i class="fa-solid fa-person-biking"></i> Cycling</span>
+                                <span id="scoreCycling" class="score-badge">--/10</span>
+                            </div>
+                            <div class="progress-bar"><div id="barCycling" class="progress-fill"></div></div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-header">
+                                <span><i class="fa-solid fa-utensils"></i> Outdoor Dining</span>
+                                <span id="scoreDining" class="score-badge">--/10</span>
+                            </div>
+                            <div class="progress-bar"><div id="barDining" class="progress-fill"></div></div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-header">
+                                <span><i class="fa-solid fa-car"></i> Driving Risk</span>
+                                <span id="drivingHazardText" class="score-badge badge-safe">Low Risk</span>
+                            </div>
+                            <div class="progress-bar"><div id="barDriving" class="progress-fill"></div></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 🍃 Air Quality Index (AQI) & Pollutants Panel -->
+                <section class="aqi-card glass-card">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-wind"></i> Air Quality Index & Pollutants</h2>
+                        <span id="aqiStatusBadge" class="badge badge-aqi-good">Good (AQI 1)</span>
+                    </div>
+                    <p id="aqiAdviceText" class="aqi-advice">Air quality is satisfactory, and air pollution poses little or no risk.</p>
+                    
+                    <div class="pollutant-grid">
+                        <div class="pollutant-pill">
+                            <span class="pollutant-name">PM2.5</span>
+                            <span id="valPM25" class="pollutant-val">--</span>
+                        </div>
+                        <div class="pollutant-pill">
+                            <span class="pollutant-name">PM10</span>
+                            <span id="valPM10" class="pollutant-val">--</span>
+                        </div>
+                        <div class="pollutant-pill">
+                            <span class="pollutant-name">NO2</span>
+                            <span id="valNO2" class="pollutant-val">--</span>
+                        </div>
+                        <div class="pollutant-pill">
+                            <span class="pollutant-name">O3</span>
+                            <span id="valO3" class="pollutant-val">--</span>
+                        </div>
+                        <div class="pollutant-pill">
+                            <span class="pollutant-name">SO2</span>
+                            <span id="valSO2" class="pollutant-val">--</span>
+                        </div>
+                        <div class="pollutant-pill">
+                            <span class="pollutant-name">CO</span>
+                            <span id="valCO" class="pollutant-val">--</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Hourly Forecast Breakdown -->
                 <section class="hourly-forecast glass-card">
                     <div class="section-header">
-                        <h2>Hourly Reading (24-Hour Breakdown)</h2>
-                        <span class="badge"><i class="fa-solid fa-clock"></i> Live Updates</span>
+                        <h2><i class="fa-solid fa-clock"></i> 24-Hour Timeline Breakdown</h2>
+                        <span class="badge"><i class="fa-solid fa-arrows-rotate"></i> Live</span>
                     </div>
                     <div class="hourly-container" id="hourlyForecastContainer">
-                        <!-- Dynamically populated hourly cards -->
                         <div class="placeholder-pulse" style="height: 110px; border-radius: 12px;"></div>
                     </div>
                 </section>
 
-                <!-- 5 Day Forecast (Hourly/Daily breakdown) -->
+                <!-- 5-Day Daily Overview -->
                 <section class="forecast glass-card">
-                    <h2>5-Day Daily Overview</h2>
+                    <h2><i class="fa-solid fa-calendar-days"></i> 5-Day Daily Overview</h2>
                     <div class="forecast-container" id="forecastContainer">
-                        <!-- Dynamically populated cards -->
                         <div class="placeholder-pulse" style="height: 100px; border-radius: 10px;"></div>
                     </div>
                 </section>
 
-                <!-- Chart container -->
+                <!-- 📊 Multi-Metric Chart Section -->
                 <section class="chart-section glass-card">
-                    <h2>Temperature Trend</h2>
+                    <div class="chart-header-flex">
+                        <h2><i class="fa-solid fa-chart-line"></i> Atmospheric Trends Analytics</h2>
+                        <div class="chart-metric-tabs">
+                            <button class="metric-tab active" data-metric="temp">Temp</button>
+                            <button class="metric-tab" data-metric="pop">Rain %</button>
+                            <button class="metric-tab" data-metric="wind">Wind</button>
+                            <button class="metric-tab" data-metric="humidity">Humidity</button>
+                        </div>
+                    </div>
                     <div class="chart-container">
                         <canvas id="tempChart"></canvas>
                     </div>
                 </section>
-                
+
+                <!-- 🗺️ Interactive Weather Radar Map -->
+                <section class="radar-map-card glass-card">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-map-location-dot"></i> Interactive Weather Radar Map</h2>
+                        <div class="map-layer-selector">
+                            <button class="map-layer-btn active" data-layer="precipitation">Rain</button>
+                            <button class="map-layer-btn" data-layer="clouds">Clouds</button>
+                            <button class="map-layer-btn" data-layer="temp">Temp</button>
+                            <button class="map-layer-btn" data-layer="wind">Wind</button>
+                        </div>
+                    </div>
+                    <p class="section-desc">Click anywhere on the radar map to view live weather for that exact coordinate.</p>
+                    <div id="weatherMap" class="weather-map-container"></div>
+                </section>
+
             </div>
         </div>
 
     </main>
 
-    <!-- Modals -->
+    <!-- ✈️ City-vs-City Dual Travel Comparator Modal -->
+    <div class="modal-backdrop hidden" id="comparatorModal">
+        <div class="modal compare-modal glass-card">
+            <button class="close-modal" id="closeCompareBtn"><i class="fa-solid fa-xmark"></i></button>
+            <h2><i class="fa-solid fa-plane-departure"></i> Dual-City Weather Travel Comparator</h2>
+            <p class="modal-desc">Compare current weather & travel conditions between two cities instantly.</p>
+            
+            <div class="compare-search-bar">
+                <input type="text" id="compareSearchInput" placeholder="Enter target city to compare (e.g. Paris, Tokyo)...">
+                <button id="compareSearchBtn" class="btn btn-primary">Compare</button>
+            </div>
+
+            <div class="compare-grid">
+                <!-- City 1 (Current Searched City) -->
+                <div class="compare-city-card" id="compareCity1">
+                    <h3 id="c1Name">City 1</h3>
+                    <img id="c1Icon" src="" alt="Icon" class="small-icon">
+                    <p class="c-temp" id="c1Temp">--°C</p>
+                    <p class="c-cond" id="c1Cond">--</p>
+                    <div class="c-details">
+                        <p><strong>Humidity:</strong> <span id="c1Hum">--%</span></p>
+                        <p><strong>Wind:</strong> <span id="c1Wind">-- m/s</span></p>
+                    </div>
+                </div>
+
+                <div class="compare-vs-badge">VS</div>
+
+                <!-- City 2 (Target City) -->
+                <div class="compare-city-card" id="compareCity2">
+                    <h3 id="c2Name">Search Target</h3>
+                    <img id="c2Icon" src="" alt="Icon" class="small-icon">
+                    <p class="c-temp" id="c2Temp">--°C</p>
+                    <p class="c-cond" id="c2Cond">Select a city above</p>
+                    <div class="c-details">
+                        <p><strong>Humidity:</strong> <span id="c2Hum">--%</span></p>
+                        <p><strong>Wind:</strong> <span id="c2Wind">-- m/s</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="compareSummary" class="compare-summary hidden">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span id="compareSummaryText">Comparison summary will appear here.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
     <div class="modal-backdrop hidden" id="authModal">
         <div class="modal glass-card">
             <button class="close-modal" id="closeModalBtn"><i class="fa-solid fa-xmark"></i></button>
@@ -193,16 +463,35 @@
     <div class="modal-backdrop hidden" id="dashboardModal">
         <div class="modal dashboard-modal glass-card">
             <button class="close-modal" id="closeDashBtn"><i class="fa-solid fa-xmark"></i></button>
-            <h2>My Dashboard</h2>
+            <h2><i class="fa-solid fa-user-gear"></i> Saved Favorite Locations</h2>
             <div class="favorites-section">
-                <h3>Favorite Locations</h3>
-                <ul id="favoritesList" class="favorites-list">
-                    <!-- Populated dynamically -->
+                <ul id="favoritesList" class="favorites-grid">
+                    <!-- Populated dynamically with live weather cards -->
                 </ul>
-                <p id="noFavsMsg" class="hidden">No favorite locations saved yet.</p>
+                <p id="noFavsMsg" class="hidden">No saved favorite locations yet.</p>
             </div>
         </div>
     </div>
+
+    <!-- Mobile Bottom Navigation Dock -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="nav-item active" data-target="currentWeatherSection">
+            <i class="fa-solid fa-cloud-sun"></i>
+            <span>Weather</span>
+        </button>
+        <button class="nav-item" data-target="hourlyForecastContainer">
+            <i class="fa-solid fa-clock"></i>
+            <span>Hourly</span>
+        </button>
+        <button class="nav-item" data-target="outfitActivitySection">
+            <i class="fa-solid fa-shirt"></i>
+            <span>Tips</span>
+        </button>
+        <button class="nav-item" data-target="weatherMap">
+            <i class="fa-solid fa-map"></i>
+            <span>Radar</span>
+        </button>
+    </nav>
 
     <script src="app.js"></script>
 </body>

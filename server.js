@@ -146,6 +146,33 @@ app.get('/api/weather/forecast', (req, res) => {
     fetchWeather(url, res);
 });
 
+app.get('/api/weather/air_pollution', (req, res) => {
+    const { lat, lon } = req.query;
+    if (!lat || !lon) {
+        return res.status(400).json({ error: 'Latitude and longitude are required for air pollution data' });
+    }
+    const url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}`;
+    fetchWeather(url, res);
+});
+
+app.get('/api/weather/geo', async (req, res) => {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) {
+        return res.json([]);
+    }
+    const apiKey = process.env.OPENWEATHER_API_KEY;
+    if (!apiKey || apiKey === 'your_api_key_here') {
+        return res.status(500).json({ error: 'API key not configured on server' });
+    }
+    try {
+        const response = await axios.get(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(q)}&limit=5&appid=${apiKey}`);
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching geocoding suggestions' });
+    }
+});
+
+
 
 /* ===========================
  * FAVORITES ROUTES

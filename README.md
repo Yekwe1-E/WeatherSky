@@ -1,23 +1,56 @@
-# 🌤️ WeatherSky - Live Weather & Forecast Web App
+# 🌤️ WeatherSky - Next-Gen Live Weather & Atmospheric Intelligence Portal
 
-WeatherSky is a modern, responsive web application offering real-time weather reports, hourly 24-hour forecast breakdown timelines, live dynamic sun/rain visual canvas scenery, and cloud database integration powered by **Supabase**.
+**WeatherSky** is an industry-leading, feature-rich weather and atmospheric intelligence web application built with **Express.js**, **Supabase**, **HTML5 Canvas Animation Engine**, **Web Audio API**, **Chart.js**, and **Leaflet.js Radar Maps**.
 
----
-
-## ✨ Key Features
-
-- **Live Weather Data**: Real-time current temperature, weather conditions, humidity, wind speed, pressure, and visibility via OpenWeatherMap API.
-- **Hourly Breakdown Timeline**: 24-hour visual weather forecast breakdown with rain probability percentages (`%`).
-- **Dynamic Visual Scenery**: Canvas animation engine rendering sun beams, falling rain drops, swirling snowflakes, and lightning flashes.
-- **Cloud Database (Supabase)**: User registration, secure login, and live favorite location storage powered by Supabase.
-- **Responsive Glassmorphism UI**: Modern aesthetic with dynamic daylight/night time backgrounds and dark mode toggle.
+It features an ultra-premium **Glassmorphism UI/UX design** optimized for both **Desktop** and **Mobile** viewports.
 
 ---
 
-## 🚀 Quick Start (Local Setup)
+## ✨ Key Signature Features
 
-### 1. Install Dependencies
+- 🌡️ **°C / °F Live Unit Switcher**: Single-click navbar toggle that seamlessly converts temperatures across current weather, 24-hour breakdown cards, 5-day forecast cards, outfit tips, and Chart.js graphs instantly.
+- 👕 **Smart Outfit & Outdoor Activity Recommendation Engine**: AI-like recommendation algorithm providing personalized clothing tips (*e.g., "Heavy insulated coat + waterproof boots"*), fitness suitability ratings (Running 🏃, Cycling 🚴, Outdoor Dining ☕), and driving road hazard alerts (*Dry / Wet / Reduced Visibility / Hydroplaning Risk*).
+- 🎛️ **Interactive 24-Hour Weather Time-Travel Scrubber**: Drag across the 24-hour timeline scrubber to watch the entire dashboard (dynamic visual canvas scenery, sun/moon trajectory, rain intensity, wind vector, temperatures) update live to simulate weather at any hour.
+- 🔊 **Web Audio Ambient Weather Soundscape Synthesizer**: Procedurally generates soothing ambient weather sounds (gentle rain drops, soft wind howling, thunder, morning birds) directly in the browser via Web Audio API.
+- 🍃 **Air Quality Index (AQI) & Pollutant Health Panel**: Real-time OpenWeather Air Pollution API integration rendering AQI level (Good, Fair, Moderate, Poor, Very Poor), health advisories, and pollutant concentrations (**PM2.5, PM10, CO, NO2, O3, SO2**).
+- ☀️ **Solar Trajectory Arc & Atmospheric Dashboard**: Visual curved SVG solar trajectory tracing Sun position relative to local sunrise, current time, and sunset, alongside real-time UV Index scale.
+- 🧭 **3D Wind Vector Compass & Beaufort Scale**: Animated directional compass displaying live wind degrees, gust speed, and the international Beaufort Wind Force Scale (*Calm, Light Breeze, Moderate Breeze, High Wind, Gale, Storm*).
+- 🔍 **Live Search Autocomplete & Quick History Chips**: Instant city suggestions dropdown powered by OpenWeather Geocoding API (`/api/weather/geo`). Stores up to 5 recent searches in `localStorage` for 1-click re-searching.
+- 🗺️ **Interactive Weather Radar Map (Leaflet JS)**: Embedded Leaflet map widget with toggleable layers (**Precipitation/Rain**, **Clouds**, **Temperature**, **Wind**). Click anywhere on the map to fetch weather for that location.
+- ✈️ **City-vs-City Dual Travel Comparator**: Side-by-side weather comparison modal comparing temperature, weather conditions, humidity, and wind speed between your current location and a travel destination.
+- 📱 **Mobile-First Responsive UX**: Floating bottom navigation dock (`#mobileBottomNav`) tailored for touchscreens and small viewports.
+- 🔐 **Cloud Database Authentication & Favorites (Supabase)**: User registration, secure bcrypt login, and live favorite location storage powered by **Supabase**.
+
+---
+
+## 🛠️ Project Structure
+
+```
+weather/
+├── config/
+│   └── supabase.js          # Supabase client configuration
+├── database/
+│   ├── supabase_schema.sql  # SQL DDL for Supabase (users & favorites tables)
+│   └── weather.sql          # Standard SQL schema reference
+├── public/
+│   ├── index.html           # Main HTML structure with signature widgets
+│   ├── style.css            # Glassmorphism design system & responsive layout
+│   └── app.js               # Frontend JavaScript engine
+├── .env.example             # Environment variables template
+├── .gitignore               # Git ignore configuration
+├── db.js                    # Database abstraction layer wrapper
+├── server.js                # Express API backend & OpenWeather proxy endpoints
+└── package.json             # Node.js dependencies & scripts
+```
+
+---
+
+## 🚀 Quick Start Guide
+
+### 1. Clone & Install Dependencies
 ```bash
+git clone https://github.com/YOUR_USERNAME/weather.git
+cd weather
 npm install
 ```
 
@@ -26,25 +59,57 @@ Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Fill in your API keys in `.env`:
-- `OPENWEATHER_API_KEY`: OpenWeatherMap API Key
-- `SUPABASE_URL`: Supabase Project URL
-- `SUPABASE_KEY`: Supabase Anon Public Key
+Fill in your configuration in `.env`:
+```env
+PORT=8080
+SESSION_SECRET=your_session_secret_here
+
+OPENWEATHER_API_KEY=your_openweather_api_key_here
+
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_KEY=your-anon-public-key-here
+```
 
 ### 3. Setup Supabase Database
-Run the SQL DDL statements located in `database/supabase_schema.sql` inside your **Supabase Dashboard SQL Editor**.
+Run the SQL DDL statements located in `database/supabase_schema.sql` inside your **Supabase Dashboard SQL Editor**:
+```sql
+CREATE TABLE IF NOT EXISTS public.users (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-### 4. Start the Application
+CREATE TABLE IF NOT EXISTS public.favorites (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    city VARCHAR(100) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### 4. Run Locally
 ```bash
 npm start
 ```
-Open [http://localhost:8080](http://localhost:8080) in your browser.
+Open **[http://localhost:8080](http://localhost:8080)** in your browser!
 
 ---
 
 ## 🌐 Deploying to Production (Render / Railway / Vercel)
 
-1. Push your repository to GitHub.
-2. Connect your repository to **Render** or **Railway**.
-3. Set the build command to `npm install` and start command to `npm start`.
-4. Add your Environment Variables (`OPENWEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`, `SESSION_SECRET`) in your hosting provider's dashboard settings.
+1. Push your code to GitHub:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit - Upgraded WeatherSky app"
+   git branch -M main
+   git remote add origin https://github.com/YOUR_USERNAME/weather.git
+   git push -u origin main
+   ```
+2. Connect your GitHub repository to **Render**, **Railway**, or **Vercel**.
+3. Set Build Command: `npm install`
+4. Set Start Command: `npm start`
+5. Add your Environment Variables (`OPENWEATHER_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`, `SESSION_SECRET`) in your deployment service dashboard settings.
