@@ -782,18 +782,23 @@ function initRadarMap(lat, lon, cityName) {
     if (!mapEl) return;
 
     if (!weatherMap) {
-        weatherMap = L.map('weatherMap').setView([lat, lon], 9);
+        weatherMap = L.map('weatherMap', {
+            zoomControl: true,
+            scrollWheelZoom: false
+        }).setView([lat, lon], 9);
         
-        // Base OpenStreetMap Tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+        // Base High-Contrast Map Tiles (CartoDB Voyager)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
         }).addTo(weatherMap);
 
-        // Marker
+        // Custom Marker
         mapMarker = L.marker([lat, lon]).addTo(weatherMap)
             .bindPopup(`<b>${cityName}</b>`).openPopup();
 
-        // Click event on map to fetch weather
+        // Click event on map to fetch weather for clicked coordinates
         weatherMap.on('click', (e) => {
             fetchWeatherData({ lat: e.latlng.lat, lon: e.latlng.lng });
         });
@@ -804,6 +809,11 @@ function initRadarMap(lat, lon, cityName) {
             mapMarker.setLatLng([lat, lon]).setPopupContent(`<b>${cityName}</b>`).openPopup();
         }
     }
+
+    // Force Leaflet to recalculate container dimensions so tiles fill completely
+    setTimeout(() => {
+        if (weatherMap) weatherMap.invalidateSize();
+    }, 250);
 
     switchMapLayer(currentMapLayerName);
 }
@@ -818,17 +828,33 @@ function switchMapLayer(layerKey) {
         'wind': 'wind_new'
     };
 
+    const layerNames = {
+        'precipitation': 'Rain & Precipitation Radar 🌧️',
+        'clouds': 'Cloud Coverage Overlay ☁️',
+        'temp': 'Temperature Heatmap Layer 🌡️',
+        'wind': 'Wind Velocity Vector Overlay 💨'
+    };
+
     const targetLayer = layerMap[layerKey] || layerKey;
     currentMapLayerName = targetLayer;
 
-    if (mapTileLayer) weatherMap.removeLayer(mapTileLayer);
+    if (mapTileLayer) {
+        weatherMap.removeLayer(mapTileLayer);
+        mapTileLayer = null;
+    }
 
-    // Note: OpenWeather tile layer (if API key available)
-    const apiKey = 'b1b15e88fa797225412429c1c50c122a'; // Demo fallback key or environment proxy
-    mapTileLayer = L.tileLayer(`https://tile.openweathermap.org/map/${targetLayer}/{z}/{x}/{y}.png?appid=${apiKey}`, {
-        opacity: 0.65
+    // Fetch radar overlay via secure server proxy endpoint
+    mapTileLayer = L.tileLayer(`/api/weather/tiles/${targetLayer}/{z}/{x}/{y}`, {
+        opacity: 0.65,
+        maxZoom: 19
     }).addTo(weatherMap);
+
+    if (layerNames[layerKey]) {
+        showNotification(`Radar Layer: ${layerNames[layerKey]}`);
+    }
 }
+
+
 
 // ----------------------------------------
 // 🔊 WEB AUDIO WEATHER SOUNDSCAPE SYNTHESIZER

@@ -172,6 +172,25 @@ app.get('/api/weather/geo', async (req, res) => {
     }
 });
 
+app.get('/api/weather/tiles/:layer/:z/:x/:y', async (req, res) => {
+    const { layer, z, x, y } = req.params;
+    const apiKey = process.env.OPENWEATHER_API_KEY;
+    if (!apiKey || apiKey === 'your_api_key_here') {
+        return res.status(500).send('API key not configured');
+    }
+    try {
+        const response = await axios.get(`https://tile.openweathermap.org/map/${layer}/${z}/${x}/${y}.png?appid=${apiKey}`, {
+            responseType: 'arraybuffer'
+        });
+        res.set('Content-Type', 'image/png');
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(response.data);
+    } catch (error) {
+        res.status(404).send('Tile not found');
+    }
+});
+
+
 
 
 /* ===========================
